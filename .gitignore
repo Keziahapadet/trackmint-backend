@@ -1,0 +1,14 @@
+# Secret files
+src/main/resources/application.yml
+src/main/resources/application.yaml
+
+# Maven
+target/
+
+# IntelliJ
+.idea/
+*.iml
+
+# OS
+.DS_Store
+Thumbs.db
