@@ -1,2 +1,0 @@
-[phases.build]
-cmds = ["./mvnw -DoutputFile=target/mvn-dependency-list.log -B -DskipTests clean dependency:list install"]
