@@ -49,8 +49,11 @@ public class SecurityConfig {
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
 
-        // Allow Angular dev server
-        configuration.setAllowedOrigins(List.of("http://localhost:4200"));
+        // Allow Angular dev server AND your Render frontend
+        configuration.setAllowedOrigins(Arrays.asList(
+                "http://localhost:4200",                          // Local development
+                "https://trackmint-w9xv.onrender.com"             // Your live Render frontend
+        ));
 
         // Allow all needed methods
         configuration.setAllowedMethods(Arrays.asList(
@@ -68,20 +71,22 @@ public class SecurityConfig {
                 "Access-Control-Request-Headers"
         ));
 
-        // Allow credentials
+        // Allow credentials (cookies, authorization headers)
         configuration.setAllowCredentials(true);
 
-        // Expose headers
-        configuration.setExposedHeaders(List.of(
+        // Expose headers to the frontend
+        configuration.setExposedHeaders(Arrays.asList(
                 "Authorization",
                 "Content-Disposition"
         ));
 
-        // Cache preflight requests for 1 hour
+        // Cache preflight requests for 1 hour (3600 seconds)
         configuration.setMaxAge(3600L);
 
+        // Apply CORS configuration to all endpoints
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", configuration);
+
         return source;
     }
 
