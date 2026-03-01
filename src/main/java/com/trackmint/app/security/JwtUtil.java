@@ -11,12 +11,11 @@ import java.util.Date;
 @Component
 public class JwtUtil {
 
-    @Value("${JWT_SECRET:trackmintSecretKeyTrackmintSecretKey123456}")
+    @Value("${JWT_SECRET}")
     private String secret;
 
-    @Value("${JWT_EXPIRATION:86400000}")
+    @Value("${JWT_EXPIRATION}")
     private long expiration;
-
     private SecretKey getSigningKey() {
         return Keys.hmacShaKeyFor(secret.getBytes());
     }
