@@ -52,7 +52,7 @@ public class SecurityConfig {
         // Allow Angular dev server AND your Render frontend
         configuration.setAllowedOrigins(Arrays.asList(
                 "http://localhost:4200",                          // Local development
-                "https://trackmint-w9xv.onrender.com"             // Your live Render frontend
+                "https://trackmint-1.onrender.com"             // Your live Render frontend
         ));
 
         // Allow all needed methods
