@@ -1,0 +1,7 @@
+spring:
+  datasource:
+    url: jdbc:postgresql://localhost:5432/trackmint_db
+    username: postgres
+    password: admin123
+  mail:
+    password: gbpr nbky jgbv asda
