@@ -12,7 +12,7 @@ spring:
         format_sql: true
   mail:
     host: smtp.gmail.com
-    port:  465
+    port: 587
     username: ${MAIL_USERNAME:keziahapadet41@gmail.com}
     password: ${MAIL_PASSWORD:qovm thpp toje gkda}
     properties:
@@ -21,6 +21,7 @@ spring:
           auth: true
           starttls:
             enable: true
+            required: true
 
 springdoc:
   swagger-ui:
