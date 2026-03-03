@@ -2,36 +2,23 @@ package com.trackmint.app.service;
 
 import com.trackmint.app.exception.AppException;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.mail.javamail.JavaMailSender;
-import org.springframework.mail.javamail.MimeMessageHelper;
+import org.springframework.http.*;
 import org.springframework.stereotype.Service;
-import jakarta.mail.MessagingException;
-import jakarta.mail.internet.MimeMessage;
+import org.springframework.web.client.RestTemplate;
+
+import java.util.Map;
 
 @Service
 public class EmailService {
 
-    private final JavaMailSender mailSender;
-
-    @Value("${spring.mail.username}")
-    private String fromEmail;
+    @Value("${resend.api.key}")
+    private String resendApiKey;
 
     @Value("${app.frontend.url}")
     private String frontendUrl;
 
-    public EmailService(JavaMailSender mailSender) {
-        this.mailSender = mailSender;
-    }
-
     public void sendPasswordResetEmail(String toEmail, String token) {
         try {
-            MimeMessage message = mailSender.createMimeMessage();
-            MimeMessageHelper helper = new MimeMessageHelper(message, true);
-
-            helper.setFrom(fromEmail);
-            helper.setTo(toEmail);
-            helper.setSubject("TrackMint - Reset Your Password");
-
             String resetLink = frontendUrl + "/reset-password?token=" + token;
 
             String htmlContent = """
@@ -83,10 +70,24 @@ public class EmailService {
                     </div>
                     """.formatted(resetLink);
 
-            helper.setText(htmlContent, true);
-            mailSender.send(message);
+            RestTemplate restTemplate = new RestTemplate();
 
-        } catch (MessagingException e) {
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_JSON);
+            headers.setBearerAuth(resendApiKey);
+
+            Map<String, Object> body = Map.of(
+                    "from", "TrackMint <onboarding@resend.dev>",
+                    "to", toEmail,
+                    "subject", "TrackMint - Reset Your Password",
+                    "html", htmlContent
+            );
+
+            HttpEntity<Map<String, Object>> request = new HttpEntity<>(body, headers);
+
+            restTemplate.postForEntity("https://api.resend.com/emails", request, String.class);
+
+        } catch (Exception e) {
             throw AppException.emailSendFailed();
         }
     }
