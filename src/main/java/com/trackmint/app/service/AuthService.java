@@ -17,6 +17,7 @@ import java.util.UUID;
 @Service
 public class AuthService {
 
+//dependencies
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtUtil jwtUtil;
@@ -26,6 +27,8 @@ public class AuthService {
     private final RefreshTokenRepository refreshTokenRepository;
     private final EmailService emailService;
 
+
+    //constructor
     public AuthService(UserRepository userRepository,
                        PasswordEncoder passwordEncoder,
                        JwtUtil jwtUtil,
@@ -72,13 +75,16 @@ public class AuthService {
         user.setFullName(dto.getFullName());
         user.setEmail(dto.getEmail());
         user.setPassword(passwordEncoder.encode(dto.getPassword()));
-        userRepository.save(user);
+        User saved = userRepository.save(user);
 
-        String accessToken = jwtUtil.generateToken(dto.getEmail());
-        String refreshToken = generateRefreshToken(user);
+        String accessToken = jwtUtil.generateToken(saved.getEmail());
+        String refreshToken = generateRefreshToken(saved);
 
-        return AuthResponseDTO.ok(accessToken, refreshToken,
-                user.getFullName(), user.getEmail(),
+        return AuthResponseDTO.ok(
+                accessToken,
+                refreshToken,
+                saved.getFullName(),
+                saved.getEmail(),
                 "Account created successfully");
     }
 
@@ -91,14 +97,17 @@ public class AuthService {
         } catch (BadCredentialsException e) {
             throw AppException.invalidCredentials();
         }
-        User user = userRepository.findByEmail(dto.getEmail())
+        User saved = userRepository.findByEmail(dto.getEmail())
                 .orElseThrow(AppException::userNotFound);
 
-        String accessToken = jwtUtil.generateToken(dto.getEmail());
-        String refreshToken = generateRefreshToken(user);
+        String accessToken = jwtUtil.generateToken(saved.getEmail());
+        String refreshToken = generateRefreshToken(saved);
 
-        return AuthResponseDTO.ok(accessToken, refreshToken,
-                user.getFullName(), user.getEmail(),
+        return AuthResponseDTO.ok(
+                accessToken,
+                refreshToken,
+                saved.getFullName(),
+                saved.getEmail(),
                 "Login successful");
     }
 

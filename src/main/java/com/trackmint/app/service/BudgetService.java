@@ -23,125 +23,37 @@ public class BudgetService {
         this.userRepository = userRepository;
     }
 
-    public List<BudgetResponseDTO> getUserBudgets(String email) {
-        User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new RuntimeException("User not found"));
 
+
+    @Transactional(readOnly = true)
+    public List<BudgetResponseDTO> getUserBudgets(String email) {
+        User user = findUserByEmail(email);
         return budgetRepository.findByUserOrderByCategoryAsc(user)
                 .stream()
                 .map(this::convertToDTO)
                 .collect(Collectors.toList());
     }
 
+    @Transactional(readOnly = true)
     public List<BudgetResponseDTO> getBudgetsByMonth(String email, Integer month, Integer year) {
-        User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new RuntimeException("User not found"));
-
+        User user = findUserByEmail(email);
         return budgetRepository.findByUserAndMonthAndYearOrderByCategoryAsc(user, month, year)
                 .stream()
                 .map(this::convertToDTO)
                 .collect(Collectors.toList());
     }
 
+    @Transactional(readOnly = true)
     public BudgetResponseDTO getBudgetById(String email, Long id) {
-        User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new RuntimeException("User not found"));
-
-        Budget budget = budgetRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Budget not found"));
-
-        if (!budget.getUser().getId().equals(user.getId())) {
-            throw new RuntimeException("Unauthorized access to budget");
-        }
-
+        User user = findUserByEmail(email);
+        Budget budget = findBudgetById(id);
+        checkOwnership(budget, user);
         return convertToDTO(budget);
     }
 
-    @Transactional
-    public BudgetResponseDTO createBudget(String email, BudgetRequestDTO dto) {
-        User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new RuntimeException("User not found"));
-
-        LocalDateTime now = LocalDateTime.now();
-        Integer month = dto.getMonth() != null ? dto.getMonth() : now.getMonthValue();
-        Integer year = dto.getYear() != null ? dto.getYear() : now.getYear();
-
-        // Check if budget already exists for this category and month
-        if (budgetRepository.existsByUserAndCategoryAndMonthAndYear(user, dto.getCategory(), month, year)) {
-            throw new RuntimeException("Budget already exists for this category in " + month + "/" + year);
-        }
-
-        Budget budget = new Budget();
-        budget.setUser(user);
-        budget.setCategory(dto.getCategory());
-        budget.setAmount(dto.getAmount());
-        budget.setSpent(dto.getSpent() != null ? dto.getSpent() : 0.0);
-        budget.setPeriod(dto.getPeriod() != null ? dto.getPeriod() : "monthly");
-        budget.setMonth(month);
-        budget.setYear(year);
-
-        Budget savedBudget = budgetRepository.save(budget);
-        return convertToDTO(savedBudget);
-    }
-
-    @Transactional
-    public BudgetResponseDTO updateBudget(String email, Long id, BudgetRequestDTO dto) {
-        User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new RuntimeException("User not found"));
-
-        Budget budget = budgetRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Budget not found"));
-
-        if (!budget.getUser().getId().equals(user.getId())) {
-            throw new RuntimeException("Unauthorized access to budget");
-        }
-
-        if (dto.getCategory() != null) budget.setCategory(dto.getCategory());
-        if (dto.getAmount() != null) budget.setAmount(dto.getAmount());
-        if (dto.getSpent() != null) budget.setSpent(dto.getSpent());
-        if (dto.getPeriod() != null) budget.setPeriod(dto.getPeriod());
-        if (dto.getMonth() != null) budget.setMonth(dto.getMonth());
-        if (dto.getYear() != null) budget.setYear(dto.getYear());
-
-        Budget updatedBudget = budgetRepository.save(budget);
-        return convertToDTO(updatedBudget);
-    }
-
-    @Transactional
-    public BudgetResponseDTO updateSpent(String email, Long id, Double spent) {
-        User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new RuntimeException("User not found"));
-
-        Budget budget = budgetRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Budget not found"));
-
-        if (!budget.getUser().getId().equals(user.getId())) {
-            throw new RuntimeException("Unauthorized access to budget");
-        }
-
-        budget.setSpent(spent);
-        Budget updatedBudget = budgetRepository.save(budget);
-        return convertToDTO(updatedBudget);
-    }
-
-    @Transactional
-    public void deleteBudget(String email, Long id) {
-        User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new RuntimeException("User not found"));
-
-        Budget budget = budgetRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Budget not found"));
-
-        if (!budget.getUser().getId().equals(user.getId())) {
-            throw new RuntimeException("Unauthorized access to budget");
-        }
-
-        budgetRepository.delete(budget);
-    }
-
+    @Transactional(readOnly = true)
     public BudgetSummaryDTO getBudgetSummary(String email) {
-        User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+        User user = findUserByEmail(email);
 
         LocalDateTime now = LocalDateTime.now();
         Integer currentMonth = now.getMonthValue();
@@ -164,30 +76,111 @@ public class BudgetService {
                 .sum();
         summary.setOverBudget(overBudgetAmount);
 
-        List<Budget> budgets = budgetRepository.findByUserAndMonthAndYearOrderByCategoryAsc(user, currentMonth, currentYear);
+        List<Budget> budgets = budgetRepository.findByUserAndMonthAndYearOrderByCategoryAsc(
+                user, currentMonth, currentYear);
         summary.setBudgetCount((long) budgets.size());
 
-        List<BudgetResponseDTO> budgetDTOs = budgets.stream()
+        summary.setBudgets(budgets.stream()
                 .map(this::convertToDTO)
-                .collect(Collectors.toList());
-        summary.setBudgets(budgetDTOs);
+                .collect(Collectors.toList()));
 
         summary.setAlerts(getBudgetAlerts(user));
 
         return summary;
     }
 
+    @Transactional(readOnly = true)
     public List<BudgetAlertDTO> getBudgetAlerts(String email) {
-        User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new RuntimeException("User not found"));
-
+        User user = findUserByEmail(email);
         return getBudgetAlerts(user);
+    }
+
+
+
+    @Transactional
+    public BudgetResponseDTO createBudget(String email, BudgetRequestDTO dto) {
+        User user = findUserByEmail(email);
+
+        LocalDateTime now = LocalDateTime.now();
+        Integer month = dto.getMonth() != null ? dto.getMonth() : now.getMonthValue();
+        Integer year = dto.getYear() != null ? dto.getYear() : now.getYear();
+
+        if (budgetRepository.existsByUserAndCategoryAndMonthAndYear(
+                user, dto.getCategory(), month, year)) {
+            throw new RuntimeException("Budget already exists for this category in "
+                    + month + "/" + year);
+        }
+
+        Budget budget = new Budget();
+        budget.setUser(user);
+        budget.setCategory(dto.getCategory());
+        budget.setAmount(dto.getAmount());
+        budget.setSpent(dto.getSpent() != null ? dto.getSpent() : 0.0);
+        budget.setPeriod(dto.getPeriod() != null ? dto.getPeriod() : "monthly");
+        budget.setMonth(month);
+        budget.setYear(year);
+
+        Budget saved = budgetRepository.save(budget);
+        return convertToDTO(saved);
+    }
+
+    @Transactional
+    public BudgetResponseDTO updateBudget(String email, Long id, BudgetRequestDTO dto) {
+        User user = findUserByEmail(email);
+        Budget budget = findBudgetById(id);
+        checkOwnership(budget, user);
+
+        if (dto.getCategory() != null) budget.setCategory(dto.getCategory());
+        if (dto.getAmount() != null) budget.setAmount(dto.getAmount());
+        if (dto.getSpent() != null) budget.setSpent(dto.getSpent());
+        if (dto.getPeriod() != null) budget.setPeriod(dto.getPeriod());
+        if (dto.getMonth() != null) budget.setMonth(dto.getMonth());
+        if (dto.getYear() != null) budget.setYear(dto.getYear());
+
+        Budget saved = budgetRepository.save(budget);
+        return convertToDTO(saved);
+    }
+
+    @Transactional
+    public BudgetResponseDTO updateSpent(String email, Long id, Double spent) {
+        User user = findUserByEmail(email);
+        Budget budget = findBudgetById(id);
+        checkOwnership(budget, user);
+
+        budget.setSpent(spent);
+        Budget saved = budgetRepository.save(budget);
+        return convertToDTO(saved);
+    }
+
+    @Transactional
+    public void deleteBudget(String email, Long id) {
+        User user = findUserByEmail(email);
+        Budget budget = findBudgetById(id);
+        checkOwnership(budget, user);
+        budgetRepository.delete(budget);
+    }
+
+
+
+    private User findUserByEmail(String email) {
+        return userRepository.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+    }
+
+    private Budget findBudgetById(Long id) {
+        return budgetRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Budget not found"));
+    }
+
+    private void checkOwnership(Budget budget, User user) {
+        if (!budget.getUser().getId().equals(user.getId())) {
+            throw new RuntimeException("Unauthorized access to budget");
+        }
     }
 
     private List<BudgetAlertDTO> getBudgetAlerts(User user) {
         List<BudgetAlertDTO> alerts = new ArrayList<>();
 
-        // Check over budget
         List<Budget> overBudget = budgetRepository.findOverBudget(user);
         for (Budget budget : overBudget) {
             BudgetAlertDTO alert = new BudgetAlertDTO();
@@ -196,39 +189,34 @@ public class BudgetService {
             alert.setAmount(budget.getAmount());
             alert.setSpent(budget.getSpent());
             alert.setRemaining(budget.getAmount() - budget.getSpent());
-
-            // FIXED: Convert to Double
             Double percentage = (budget.getSpent() / budget.getAmount()) * 100;
             alert.setPercentage(percentage);
-
-            alert.setMessage("You have exceeded your " + budget.getCategory() + " budget by ksh " +
-                    String.format("%.2f", (budget.getSpent() - budget.getAmount())));
+            alert.setMessage("You have exceeded your " + budget.getCategory()
+                    + " budget by ksh "
+                    + String.format("%.2f", (budget.getSpent() - budget.getAmount())));
             alerts.add(alert);
         }
 
-        // Check near limit (80%+)
         List<Budget> nearLimit = budgetRepository.findNearLimitBudgets(user);
         for (Budget budget : nearLimit) {
-            if (budget.getSpent() <= budget.getAmount()) { // Not already over budget
+            if (budget.getSpent() <= budget.getAmount()) {
                 BudgetAlertDTO alert = new BudgetAlertDTO();
                 alert.setCategory(budget.getCategory());
                 alert.setType("WARNING");
                 alert.setAmount(budget.getAmount());
                 alert.setSpent(budget.getSpent());
                 alert.setRemaining(budget.getAmount() - budget.getSpent());
-
-                // FIXED: Convert to Double
                 Double percentage = (budget.getSpent() / budget.getAmount()) * 100;
                 alert.setPercentage(percentage);
-
-                alert.setMessage("You have used " + percentage.intValue() + "% of your " +
-                        budget.getCategory() + " budget");
+                alert.setMessage("You have used " + percentage.intValue()
+                        + "% of your " + budget.getCategory() + " budget");
                 alerts.add(alert);
             }
         }
 
         return alerts;
     }
+
     private BudgetResponseDTO convertToDTO(Budget budget) {
         BudgetResponseDTO dto = new BudgetResponseDTO();
         dto.setId(budget.getId());

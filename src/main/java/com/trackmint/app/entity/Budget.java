@@ -25,7 +25,7 @@ public class Budget {
 
     private Double spent = 0.0;
 
-    private String period = "monthly"; // monthly, weekly, yearly
+    private String period = "monthly";
 
     private Integer month;
 

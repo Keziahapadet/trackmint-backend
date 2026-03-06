@@ -17,13 +17,13 @@ public class Transaction {
     private String description;
 
     @Column(nullable = false)
-    private String category; // Keep this for backward compatibility
+    private String category;
 
     @Column(nullable = false)
     private Double amount;
 
     @Column(nullable = false)
-    private String type; // INCOME or EXPENSE
+    private String type;
 
     @Column(nullable = false)
     private LocalDateTime date;
@@ -32,8 +32,8 @@ public class Transaction {
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
 
-    // NEW: Add relationship to Category with different field name
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "category_id")
-    private Category categoryEntity; // Use this for Category object queries
+    private Category categoryEntity;
 }

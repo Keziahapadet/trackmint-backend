@@ -1,5 +1,6 @@
 package com.trackmint.app.exception;
 
+
 import org.springframework.http.HttpStatus;
 
 public class AppException extends RuntimeException {

@@ -23,131 +23,25 @@ public class CategoryService {
         this.userRepository = userRepository;
     }
 
+
+    @Transactional(readOnly = true)
     public List<CategoryResponseDTO> getUserCategories(String email) {
-        User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new RuntimeException("User not found"));
-
-        List<Object[]> results = categoryRepository.findCategoriesWithSpending(user);
-        List<CategoryResponseDTO> categories = new ArrayList<>();
-
-        for (Object[] result : results) {
-            Category category = (Category) result[0];
-            Double totalSpent = (Double) result[1];
-            Long transactionCount = (Long) result[2];
-
-            CategoryResponseDTO dto = convertToDTO(category);
-            dto.setTotalSpent(totalSpent != null ? totalSpent : 0.0);
-            dto.setTransactionCount(transactionCount != null ? transactionCount : 0L);
-            categories.add(dto);
-        }
-
-        return categories.stream()
-                .sorted((a, b) -> b.getTotalSpent().compareTo(a.getTotalSpent()))
-                .collect(Collectors.toList());
+        User user = findUserByEmail(email);
+        return getUserCategories(user);
     }
 
+    @Transactional(readOnly = true)
     public CategoryResponseDTO getCategoryById(String email, Long id) {
-        User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new RuntimeException("User not found"));
-
-        Category category = categoryRepository.findByUserAndId(user, id)
-                .orElseThrow(() -> new RuntimeException("Category not found"));
-
-        CategoryResponseDTO dto = convertToDTO(category);
-
-        Double totalSpent = categoryRepository.getTotalSpentByCategory(user, id);
-        Long transactionCount = categoryRepository.getTransactionCountByCategory(user, id);
-
-        dto.setTotalSpent(totalSpent != null ? totalSpent : 0.0);
-        dto.setTransactionCount(transactionCount != null ? transactionCount : 0L);
-
-        return dto;
+        User user = findUserByEmail(email);
+        return getCategoryById(user, id);
     }
 
-    public CategoryResponseDTO getCategoryWithDetails(String email, Long id) {
-        return getCategoryById(email, id);
-    }
-
-    @Transactional
-    public CategoryResponseDTO createCategory(String email, CategoryRequestDTO dto) {
-        User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new RuntimeException("User not found"));
-
-        // Check if category with same name already exists
-        if (categoryRepository.existsByUserAndName(user, dto.getName())) {
-            throw new RuntimeException("Category with name '" + dto.getName() + "' already exists");
-        }
-
-        Category category = new Category();
-        category.setUser(user);
-        category.setName(dto.getName());
-        category.setIcon(dto.getIcon() != null ? dto.getIcon() : "category");
-        category.setColor(dto.getColor() != null ? dto.getColor() : "#10B981");
-
-        Category savedCategory = categoryRepository.save(category);
-
-        CategoryResponseDTO responseDTO = convertToDTO(savedCategory);
-        responseDTO.setTotalSpent(0.0);
-        responseDTO.setTransactionCount(0L);
-
-        return responseDTO;
-    }
-
-    @Transactional
-    public CategoryResponseDTO updateCategory(String email, Long id, CategoryRequestDTO dto) {
-        User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new RuntimeException("User not found"));
-
-        Category category = categoryRepository.findByUserAndId(user, id)
-                .orElseThrow(() -> new RuntimeException("Category not found"));
-
-        // Check if new name conflicts with existing category
-        if (dto.getName() != null && !dto.getName().equals(category.getName())) {
-            if (categoryRepository.existsByUserAndName(user, dto.getName())) {
-                throw new RuntimeException("Category with name '" + dto.getName() + "' already exists");
-            }
-            category.setName(dto.getName());
-        }
-
-        if (dto.getIcon() != null) {
-            category.setIcon(dto.getIcon());
-        }
-
-        if (dto.getColor() != null) {
-            category.setColor(dto.getColor());
-        }
-
-        Category updatedCategory = categoryRepository.save(category);
-
-        CategoryResponseDTO responseDTO = convertToDTO(updatedCategory);
-
-        Double totalSpent = categoryRepository.getTotalSpentByCategory(user, id);
-        Long transactionCount = categoryRepository.getTransactionCountByCategory(user, id);
-
-        responseDTO.setTotalSpent(totalSpent != null ? totalSpent : 0.0);
-        responseDTO.setTransactionCount(transactionCount != null ? transactionCount : 0L);
-
-        return responseDTO;
-    }
-
-    @Transactional
-    public void deleteCategory(String email, Long id) {
-        User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new RuntimeException("User not found"));
-
-        Category category = categoryRepository.findByUserAndId(user, id)
-                .orElseThrow(() -> new RuntimeException("Category not found"));
-
-        categoryRepository.delete(category);
-    }
-
+    @Transactional(readOnly = true)
     public CategorySummaryDTO getCategorySummary(String email) {
-        User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+        User user = findUserByEmail(email);
 
         CategorySummaryDTO summary = new CategorySummaryDTO();
-
-        List<CategoryResponseDTO> categories = getUserCategories(email);
+        List<CategoryResponseDTO> categories = getUserCategories(user);
         summary.setCategories(categories);
         summary.setTotalCategories((long) categories.size());
 
@@ -173,6 +67,112 @@ public class CategoryService {
         summary.setSpendingByCategory(spendingByCategory);
 
         return summary;
+    }
+
+
+
+    @Transactional
+    public CategoryResponseDTO createCategory(String email, CategoryRequestDTO dto) {
+        User user = findUserByEmail(email);
+
+        if (categoryRepository.existsByUserAndName(user, dto.getName())) {
+            throw new RuntimeException("Category with name '" + dto.getName() + "' already exists");
+        }
+
+        Category category = new Category();
+        category.setUser(user);
+        category.setName(dto.getName());
+        category.setIcon(dto.getIcon() != null ? dto.getIcon() : "category");
+        category.setColor(dto.getColor() != null ? dto.getColor() : "#10B981");
+
+        Category saved = categoryRepository.save(category);
+
+        CategoryResponseDTO responseDTO = convertToDTO(saved);
+        responseDTO.setTotalSpent(0.0);
+        responseDTO.setTransactionCount(0L);
+
+        return responseDTO;
+    }
+
+    @Transactional
+    public CategoryResponseDTO updateCategory(String email, Long id, CategoryRequestDTO dto) {
+        User user = findUserByEmail(email);
+        Category category = findCategoryByUserAndId(user, id);
+
+        if (dto.getName() != null && !dto.getName().equals(category.getName())) {
+            if (categoryRepository.existsByUserAndName(user, dto.getName())) {
+                throw new RuntimeException("Category with name '" + dto.getName() + "' already exists");
+            }
+            category.setName(dto.getName());
+        }
+
+        if (dto.getIcon() != null) category.setIcon(dto.getIcon());
+        if (dto.getColor() != null) category.setColor(dto.getColor());
+
+        Category saved = categoryRepository.save(category);
+
+        CategoryResponseDTO responseDTO = convertToDTO(saved);
+
+        Double totalSpent = categoryRepository.getTotalSpentByCategory(user, id);
+        Long transactionCount = categoryRepository.getTransactionCountByCategory(user, id);
+
+        responseDTO.setTotalSpent(totalSpent != null ? totalSpent : 0.0);
+        responseDTO.setTransactionCount(transactionCount != null ? transactionCount : 0L);
+
+        return responseDTO;
+    }
+
+    @Transactional
+    public void deleteCategory(String email, Long id) {
+        User user = findUserByEmail(email);
+        Category category = findCategoryByUserAndId(user, id);
+        categoryRepository.delete(category);
+    }
+
+
+
+    private User findUserByEmail(String email) {
+        return userRepository.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+    }
+
+    private Category findCategoryByUserAndId(User user, Long id) {
+        return categoryRepository.findByUserAndId(user, id)
+                .orElseThrow(() -> new RuntimeException("Category not found"));
+    }
+
+    private CategoryResponseDTO getCategoryById(User user, Long id) {
+        Category category = findCategoryByUserAndId(user, id);
+
+        CategoryResponseDTO dto = convertToDTO(category);
+
+        Double totalSpent = categoryRepository.getTotalSpentByCategory(user, id);
+        Long transactionCount = categoryRepository.getTransactionCountByCategory(user, id);
+
+        dto.setTotalSpent(totalSpent != null ? totalSpent : 0.0);
+        dto.setTransactionCount(transactionCount != null ? transactionCount : 0L);
+
+        return dto;
+    }
+
+    private List<CategoryResponseDTO> getUserCategories(User user) {
+        List<Object[]> results = categoryRepository.findCategoriesWithSpending(user);
+        List<CategoryResponseDTO> categories = new ArrayList<>();
+
+        for (Object[] result : results) {
+            Category category = (Category) result[0];
+            Double totalSpent = (Double) result[1];
+            Long transactionCount = (Long) result[2];
+
+            CategoryResponseDTO dto = convertToDTO(category);
+            dto.setTotalSpent(totalSpent != null ? totalSpent : 0.0);
+            dto.setTransactionCount(transactionCount != null ? transactionCount : 0L);
+            categories.add(dto);
+        }
+
+        return categories.stream()
+                .sorted((a, b) -> b.getTotalSpent().compareTo(a.getTotalSpent()))
+                .collect(Collectors.toList());
     }
 
     private CategoryResponseDTO convertToDTO(Category category) {

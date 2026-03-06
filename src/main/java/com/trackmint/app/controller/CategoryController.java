@@ -45,16 +45,18 @@ public class CategoryController {
     public ResponseEntity<CategoryResponseDTO> getCategoryWithDetails(
             @AuthenticationPrincipal UserDetails userDetails,
             @PathVariable Long id) {
-        return ResponseEntity.ok(categoryService.getCategoryWithDetails(userDetails.getUsername(), id));
+        return ResponseEntity.ok(categoryService.getCategoryById(userDetails.getUsername(), id));
     }
 
     @PostMapping
     @Operation(summary = "Create a new category")
-    public ResponseEntity<CategoryResponseDTO> createCategory(
+    public ResponseEntity<CategoryResponseDTO>CreateCategory(
+
             @AuthenticationPrincipal UserDetails userDetails,
-            @Valid @RequestBody CategoryRequestDTO dto) {
-        return ResponseEntity.status(HttpStatus.CREATED)
-                .body(categoryService.createCategory(userDetails.getUsername(), dto));
+            @Valid @RequestBody CategoryRequestDTO categoryRequestDTO
+
+    ){
+     return ResponseEntity.ok(categoryService.createCategory(userDetails.getUsername(),categoryRequestDTO))  ;
     }
 
     @PutMapping("/{id}")
