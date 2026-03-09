@@ -4,8 +4,7 @@ spring:
     username: ${PGUSER}
     password: ${PGPASSWORD}
 
-    flyway:
-      enabled: false
+
 
 
 
