@@ -10,6 +10,9 @@ spring:
       hibernate:
         dialect: org.hibernate.dialect.PostgreSQLDialect
         format_sql: true
+
+        flyway:
+          enabled: false
   mail:
     host: smtp.gmail.com
     port: 587
@@ -22,6 +25,12 @@ spring:
           starttls:
             enable: true
             required: true
+
+
+            resend:
+              api:
+                key: re_8qMyTv53_Nphkcr1xQ3Qr4TxJrCpuF6rT
+
 
 springdoc:
   swagger-ui:

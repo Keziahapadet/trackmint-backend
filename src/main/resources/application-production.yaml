@@ -4,6 +4,11 @@ spring:
     username: ${PGUSER}
     password: ${PGPASSWORD}
 
+    flyway:
+      enabled: false
+
+
+
 resend:
   api:
     key: ${RESEND_API_KEY}
