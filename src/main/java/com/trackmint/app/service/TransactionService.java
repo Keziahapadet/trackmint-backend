@@ -136,16 +136,25 @@ public class TransactionService {
 
         if ("EXPENSE".equalsIgnoreCase(dto.getType())) {
             LocalDateTime now = LocalDateTime.now();
+            System.out.println("🔍 Looking for budget - category: " + dto.getCategory()
+                    + " month: " + now.getMonthValue() + " year: " + now.getYear());
+
             budgetRepository.findByUserAndCategoryAndMonthAndYear(
                     user, dto.getCategory(), now.getMonthValue(), now.getYear()
             ).ifPresent(budget -> {
+                System.out.println("✅ Budget found: " + budget.getCategory()
+                        + " amount: " + budget.getAmount() + " spent: " + budget.getSpent());
+
                 double newSpent = budget.getSpent() + Math.abs(dto.getAmount());
                 budget.setSpent(newSpent);
                 budgetRepository.save(budget);
 
                 if (budget.getAmount() > 0) {
                     double percentage = (newSpent / budget.getAmount()) * 100;
+                    System.out.println("📊 Percentage: " + percentage);
+
                     if (percentage >= 80) {
+                        System.out.println("🔔 Creating notification...");
                         notificationService.createBudgetAlert(
                                 email,
                                 budget.getCategory(),
@@ -153,6 +162,7 @@ public class TransactionService {
                                 newSpent,
                                 budget.getAmount()
                         );
+                        System.out.println("✅ Notification created!");
                     }
                 }
             });
