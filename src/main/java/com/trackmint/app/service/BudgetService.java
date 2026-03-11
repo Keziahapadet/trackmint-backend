@@ -4,6 +4,7 @@ import com.trackmint.app.dto.*;
 import com.trackmint.app.entity.Budget;
 import com.trackmint.app.entity.User;
 import com.trackmint.app.repository.BudgetRepository;
+import com.trackmint.app.repository.NotificationRepository;
 import com.trackmint.app.repository.UserRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -11,16 +12,20 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
+import com.trackmint.app.service.NotificationService;
 
 @Service
 public class BudgetService {
 
     private final BudgetRepository budgetRepository;
     private final UserRepository userRepository;
+    private final NotificationService notificationService;
 
-    public BudgetService(BudgetRepository budgetRepository, UserRepository userRepository) {
+
+    public BudgetService(BudgetRepository budgetRepository, UserRepository userRepository,NotificationService notificationService) {
         this.budgetRepository = budgetRepository;
         this.userRepository = userRepository;
+      this.notificationService = notificationService;
     }
 
 
@@ -138,6 +143,19 @@ public class BudgetService {
         if (dto.getYear() != null) budget.setYear(dto.getYear());
 
         Budget saved = budgetRepository.save(budget);
+
+        if (saved.getAmount() > 0 && saved.getSpent() > 0) {
+            double percentage = (saved.getSpent() / saved.getAmount()) * 100;
+            if (percentage >= 80) {
+                notificationService.createBudgetAlert(
+                        email,
+                        saved.getCategory(),
+                        percentage,
+                        saved.getSpent(),
+                        saved.getAmount()
+                );
+            }
+        }
         return convertToDTO(saved);
     }
 
@@ -149,6 +167,19 @@ public class BudgetService {
 
         budget.setSpent(spent);
         Budget saved = budgetRepository.save(budget);
+
+        if(budget.getAmount()> 0){
+            double percentage =(spent/ budget.getAmount()*100);
+            if (percentage >= 80){
+                notificationService.createBudgetAlert(
+                        email,
+                        budget.getCategory(),
+                        percentage,
+                        spent,
+                        budget.getAmount()
+                );
+            }
+        }
         return convertToDTO(saved);
     }
 
