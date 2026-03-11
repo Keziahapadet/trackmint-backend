@@ -5,6 +5,7 @@ import com.trackmint.app.dto.TransactionRequestDTO;
 import com.trackmint.app.dto.TransactionResponseDTO;
 import com.trackmint.app.entity.Transaction;
 import com.trackmint.app.entity.User;
+import com.trackmint.app.repository.BudgetRepository;
 import com.trackmint.app.repository.TransactionRepository;
 import com.trackmint.app.repository.UserRepository;
 import org.springframework.stereotype.Service;
@@ -15,16 +16,22 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
+
 @Service
 public class TransactionService {
 
     private final TransactionRepository transactionRepository;
     private final UserRepository userRepository;
 
+    private  final  NotificationService notificationService;
+    private  final BudgetRepository budgetRepository;
+
     public TransactionService(TransactionRepository transactionRepository,
-                              UserRepository userRepository) {
+                              UserRepository userRepository,NotificationService notificationService,BudgetRepository budgetRepository) {
         this.transactionRepository = transactionRepository;
         this.userRepository = userRepository;
+        this.notificationService = notificationService;
+        this.budgetRepository = budgetRepository;
     }
 
 
@@ -126,6 +133,30 @@ public class TransactionService {
         transaction.setDate(dto.getDate() != null ? dto.getDate() : LocalDateTime.now());
 
         Transaction saved = transactionRepository.save(transaction);
+
+        if ("EXPENSE".equalsIgnoreCase(dto.getType())) {
+            LocalDateTime now = LocalDateTime.now();
+            budgetRepository.findByUserAndCategoryAndMonthAndYear(
+                    user, dto.getCategory(), now.getMonthValue(), now.getYear()
+            ).ifPresent(budget -> {
+                double newSpent = budget.getSpent() + Math.abs(dto.getAmount());
+                budget.setSpent(newSpent);
+                budgetRepository.save(budget);
+
+                if (budget.getAmount() > 0) {
+                    double percentage = (newSpent / budget.getAmount()) * 100;
+                    if (percentage >= 80) {
+                        notificationService.createBudgetAlert(
+                                email,
+                                budget.getCategory(),
+                                percentage,
+                                newSpent,
+                                budget.getAmount()
+                        );
+                    }
+                }
+            });
+        }
         return toResponseDTO(saved);
     }
 
