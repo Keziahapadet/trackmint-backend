@@ -126,7 +126,7 @@ public class NotificationService {
         notificationRepository.deleteOldReadNotifications(user, thirtyDaysAgo);
     }
 
-    // ─── ALERT HELPERS ──────────────────────────────────────────
+
 
     public void createBudgetAlert(String email, String category,
                                   double percentage, double spent, double budget) {
@@ -215,7 +215,8 @@ public class NotificationService {
     }
 
     private String calculateTimeAgo(LocalDateTime dateTime) {
-        LocalDateTime now = LocalDateTime.now();
+
+        LocalDateTime now = LocalDateTime.now(java.time.ZoneOffset.UTC);
         long minutes = ChronoUnit.MINUTES.between(dateTime, now);
         long hours = ChronoUnit.HOURS.between(dateTime, now);
         long days = ChronoUnit.DAYS.between(dateTime, now);
