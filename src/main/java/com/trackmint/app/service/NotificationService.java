@@ -58,7 +58,7 @@ public class NotificationService {
         User user = findUserByEmail(email);
         NotificationSummaryDTO summary = new NotificationSummaryDTO();
 
-        // get unread list once — use it for both count and list
+
         List<NotificationDTO> unread = notificationRepository
                 .findByUserAndIsReadFalseOrderByCreatedAtDesc(user)
                 .stream()
@@ -183,7 +183,7 @@ public class NotificationService {
         createNotification(email, dto);
     }
 
-    // ─── PRIVATE HELPERS ────────────────────────────────────────
+
 
     private User findUserByEmail(String email) {
         return userRepository.findByEmail(email)

@@ -3,7 +3,6 @@ spring:
     url: jdbc:postgresql://localhost:5432/trackmint_db
     username: postgres
     password: admin123
-
   jpa:
     hibernate:
       ddl-auto: update
